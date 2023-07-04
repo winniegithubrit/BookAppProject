@@ -152,10 +152,6 @@ def update_book(book_id):
 
     return jsonify(response), 200
 
-from datetime import datetime
-
-# ...
-
 @app.route('/books/<int:book_id>', methods=['PUT'])
 def updating_whole_book(book_id):
     book = Book.query.get(book_id)
@@ -291,8 +287,6 @@ def delete_borrowing(borrowing_id):
     else:
         return jsonify({'message': 'Borrowing not found.'}), 404
 
-from datetime import datetime
-# other import statements
 
 @app.route('/borrowings', methods=['POST'])
 def create_borrowing():
