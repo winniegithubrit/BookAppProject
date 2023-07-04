@@ -300,6 +300,66 @@ def create_borrowing():
 
     return jsonify({'message': 'Borrowing created successfully'})
 
+# reviews functionality
+@app.route('/reviews', methods=['GET'])
+def get_reviews():
+    reviews = Review.query.all()
+    review_list = []
+    for review in reviews:
+        review_dict = {
+            'id': review.id,
+            'bookID': review.bookID,
+            'userID': review.userID,
+            'rating': review.rating,
+            'comment': review.comment
+        }
+        review_list.append(review_dict)
+    return jsonify(review_list)
+
+@app.route('/reviews/<int:review_id>', methods=['GET'])
+def get_review(review_id):
+    review = Review.query.filter_by(id=review_id).first()
+    if review is None:
+        return jsonify({'error': 'Review not found'}), 404
+    
+    review_dict = {
+        'id': review.id,
+        'bookID': review.bookID,
+        'userID': review.userID,
+        'rating': review.rating,
+        'comment': review.comment
+    }
+    return jsonify(review_dict)
+
+@app.route('/reviews/<int:review_id>', methods=['DELETE'])
+def delete_review(review_id):
+    review = Review.query.get(review_id)
+    if review is None:
+        return jsonify({'error': 'Review not found'}), 404
+    
+    db.session.delete(review)
+    db.session.commit()
+    
+    return jsonify({'message': 'Review deleted successfully'})
+
+@app.route('/reviews', methods=['POST'])
+def create_review():
+    data = request.get_json()
+    book_id = data.get('bookID')
+    user_id = data.get('userID')
+    rating = data.get('rating')
+    comment = data.get('comment')
+    review = Review(bookID=book_id, userID=user_id, rating=rating, comment=comment)
+    db.session.add(review)
+    db.session.commit()
+    return jsonify({
+        'id': review.id,
+        'bookID': review.bookID,
+        'userID': review.userID,
+        'rating': review.rating,
+        'comment': review.comment
+    }), 201
+
 
 if __name__ == '__main__':
     app.run(port=5555)
