@@ -17,7 +17,7 @@ class User(db.Model):
 
     @validates("password")
     def validate_password(self, key, password):
-        if password and len(password) < 15:
+        if password and len(password) > 15:
             raise ValueError('User password is not valid, please try again')
         return password
 

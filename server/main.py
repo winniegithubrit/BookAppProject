@@ -100,11 +100,14 @@ def create_book():
     book_schema = BookSchema()
     book = book_schema.load(data)
 
-    db.session.add(book)
+    new_book = Book(**book)
+
+    db.session.add(new_book)
     db.session.commit()
 
-    book_data = book_schema.dump(book)
+    book_data = book_schema.dump(new_book)
     return jsonify(book_data), 201
+
 
 
 @app.route('/books/<int:book_id>', methods=['PATCH'])
@@ -164,11 +167,13 @@ def create_user():
 
     user_schema = UserSchema()
     user = user_schema.load(data)
+    
+    new_user = User(**user)
 
-    db.session.add(user)
+    db.session.add(new_user)
     db.session.commit()
 
-    user_data = user_schema.dump(user)
+    user_data = user_schema.dump(new_user)
     return jsonify(user_data), 201
 
 
@@ -230,11 +235,13 @@ def create_borrowing():
 
     borrowing_schema = BorrowingSchema()
     borrowing = borrowing_schema.load(data)
+    
+    new_borrowing = Borrowing(**borrowing)
 
-    db.session.add(borrowing)
+    db.session.add(new_borrowing)
     db.session.commit()
 
-    borrowing_data = borrowing_schema.dump(borrowing)
+    borrowing_data = borrowing_schema.dump(new_borrowing)
     return jsonify(borrowing_data), 201
 
 
@@ -294,11 +301,13 @@ def create_review():
 
     review_schema = ReviewSchema()
     review = review_schema.load(data)
+    
+    new_review = Review(**review)
 
-    db.session.add(review)
+    db.session.add(new_review)
     db.session.commit()
 
-    review_data = review_schema.dump(review)
+    review_data = review_schema.dump(new_review)
     return jsonify(review_data), 201
 
 
