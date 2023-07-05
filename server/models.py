@@ -1,25 +1,31 @@
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy_serializer import SerializerMixin
 from sqlalchemy import func
 from datetime import datetime
+from sqlalchemy.orm import validates
+from marshmallow import Schema, fields
 
 db = SQLAlchemy()
 
 
-class User(db.Model, SerializerMixin):
+class User(db.Model):
     __tablename__ = 'user'
 
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String)
     email = db.Column(db.String)
     password = db.Column(db.String)
-    
+
+    @validates("password")
+    def validate_password(self, key, password):
+        if password and len(password) < 15:
+            raise ValueError('User password is not valid, please try again')
+        return password
 
     borrowings = db.relationship('Borrowing', backref='user')
     reviews = db.relationship('Review', backref='user')
 
 
-class Book(db.Model, SerializerMixin):
+class Book(db.Model):
     __tablename__ = 'book'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -36,7 +42,7 @@ class Book(db.Model, SerializerMixin):
     reviews = db.relationship('Review', backref='book')
 
 
-class Borrowing(db.Model, SerializerMixin):
+class Borrowing(db.Model):
     __tablename__ = 'borrowing'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -46,7 +52,7 @@ class Borrowing(db.Model, SerializerMixin):
     return_date = db.Column(db.DateTime)
 
 
-class Review(db.Model, SerializerMixin):
+class Review(db.Model):
     __tablename__ = 'review'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -54,3 +60,38 @@ class Review(db.Model, SerializerMixin):
     bookID = db.Column(db.Integer, db.ForeignKey('book.id'))
     rating = db.Column(db.Integer)
     comment = db.Column(db.String)
+
+
+class UserSchema(Schema):
+    id = fields.Integer()
+    username = fields.String()
+    email = fields.String()
+    password = fields.String()
+
+
+class BookSchema(Schema):
+    id = fields.Integer()
+    userID = fields.Integer()
+    title = fields.String()
+    author = fields.String()
+    publisher = fields.String()
+    publisheddate = fields.DateTime()
+    duedate = fields.DateTime()
+    image = fields.String()
+    description = fields.String()
+
+
+class BorrowingSchema(Schema):
+    id = fields.Integer()
+    userID = fields.Integer()
+    bookID = fields.Integer()
+    borrowing_date = fields.DateTime()
+    return_date = fields.DateTime()
+
+
+class ReviewSchema(Schema):
+    id = fields.Integer()
+    userID = fields.Integer()
+    bookID = fields.Integer()
+    rating = fields.Integer()
+    comment = fields.String()

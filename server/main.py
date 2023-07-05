@@ -1,368 +1,333 @@
-from flask import Flask,jsonify,session,request
-# import secrets
-# from flask_restful import Resource,Api,reqparse
+from flask import Flask, jsonify, session, request
+from flask_cors import CORS
 from flask_migrate import Migrate
-from flask import request, jsonify
-from models import db,User,Book,Borrowing,Review
+from models import db, User, Book, Borrowing, Review
 from datetime import datetime
-
+from flask_marshmallow import Marshmallow
 
 app = Flask(__name__)
-# app.secret_key = secrets.token_hex(16)
-# print(app.secret_key)
 app.secret_key = 'ed976105693e2d6308ddf5dfe86eaa7d'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-migrate  = Migrate(app,db)
+migrate = Migrate(app, db)
+CORS(app)
 db.init_app(app)
+ma = Marshmallow(app)
 
-# api = Api(app)
 
+# Defining Marshmallow Schemas
+
+class BookSchema(ma.SQLAlchemySchema):
+    class Meta:
+        model = Book
+
+    id = ma.auto_field()
+    title = ma.auto_field()
+    author = ma.auto_field()
+    publisher = ma.auto_field()
+    publisheddate = ma.auto_field()
+    duedate = ma.auto_field()
+    image = ma.auto_field()
+    description = ma.auto_field()
+
+
+class UserSchema(ma.SQLAlchemySchema):
+    class Meta:
+        model = User
+
+    id = ma.auto_field()
+    username = ma.auto_field()
+    email = ma.auto_field()
+    password = ma.auto_field()
+
+
+class BorrowingSchema(ma.SQLAlchemySchema):
+    class Meta:
+        model = Borrowing
+
+    id = ma.auto_field()
+    userID = ma.auto_field()
+    bookID = ma.auto_field()
+    borrowing_date = ma.auto_field()
+    return_date = ma.auto_field()
+
+
+class ReviewSchema(ma.SQLAlchemySchema):
+    class Meta:
+        model = Review
+
+    id = ma.auto_field()
+    bookID = ma.auto_field()
+    userID = ma.auto_field()
+    rating = ma.auto_field()
+    comment = ma.auto_field()
+
+
+# Routes
 
 @app.route('/')
 def index():
-  return {"message":"success"}
-# all the books functionality
+    return {"message": "success"}
+
+
+# Books Routes
+
 @app.route('/books', methods=['GET'])
 def get_books():
     books = Book.query.all()
-    book_list = []
-    for book in books:
-        book_data = {
-            'id': book.id,
-            'userID': book.userID,
-            'title': book.title,
-            'author': book.author,
-            'publisher': book.publisher,
-            'publisheddate': book.publisheddate,
-            'duedate': book.duedate,
-            'image': book.image,
-            'description': book.description
-        }
-        book_list.append(book_data)
-    
-    return jsonify(book_list)
-  
+    book_schema = BookSchema(many=True)
+    book_data = book_schema.dump(books)
+    return jsonify(book_data)
+
+
 @app.route('/books/<int:book_id>', methods=['GET'])
 def get_book(book_id):
     book = Book.query.filter_by(id=book_id).first()
     if book is None:
-        return jsonify({'message': 'Book has not been  found'})
+        return jsonify({'message': 'Book not found'}), 404
 
-    book_data = {
-        'id': book.id,
-        'title': book.title,
-        'author': book.author,
-        'publisher': book.publisher,
-        'publisheddate': book.publisheddate,
-        'duedate': book.duedate,
-        'image': book.image,
-        'description': book.description
-    }
-
+    book_schema = BookSchema()
+    book_data = book_schema.dump(book)
     return jsonify(book_data)
-  
-@app.route('/books/<int:book_id>', methods=['DELETE'])
-def delete_book(book_id):
-    book = Book.query.filter_by(id=book_id).first()
-    print(book)
-    if book is None:
-        return jsonify({'message': 'Book  is not found'})
 
-    db.session.delete(book)
-    db.session.commit()
-
-    return jsonify({'message': 'Book has been deleted successfully'})
-
-
-from flask import request, jsonify
 
 @app.route('/books', methods=['POST'])
 def create_book():
     data = request.get_json()
 
-    
-    title = data.get('title')
-    author = data.get('author')
-    publisher = data.get('publisher')
-    published_date = data.get('published_date')
-    due_date = data.get('due_date')
-    image = data.get('image')
-    description = data.get('description')
+    book_schema = BookSchema()
+    book = book_schema.load(data)
 
-    
-    book = Book(
-        title=title,
-        author=author,
-        publisher=publisher,
-        publisheddate=published_date,
-        duedate=due_date,
-        image=image,
-        description=description
-    )
-
-    
     db.session.add(book)
     db.session.commit()
 
-    
-    response = {
-        'id': book.id,
-        'title': book.title,
-        'author': book.author,
-        'publisher': book.publisher,
-        'published_date': book.publisheddate,
-        'due_date': book.duedate,
-        'image': book.image,
-        'description': book.description
-    }
-
-    return jsonify(response), 201
-
+    book_data = book_schema.dump(book)
+    return jsonify(book_data), 201
 
 
 @app.route('/books/<int:book_id>', methods=['PATCH'])
 def update_book(book_id):
     data = request.get_json()
-
+    
     book = Book.query.filter_by(id=book_id).first()
     if not book:
         return jsonify({'message': 'Book not found'}), 404
 
-    if 'title' in data:
-        book.title = data['title']
-    if 'author' in data:
-        book.author = data['author']
-    if 'publisher' in data:
-        book.publisher = data['publisher']
-    if 'published_date' in data:
-        book.publisheddate = data['published_date']
-    if 'due_date' in data:
-        book.duedate = data['due_date']
-    if 'image' in data:
-        book.image = data['image']
-    if 'description' in data:
-        book.description = data['description']
+    book_schema = BookSchema()
+    book = book_schema.load(data, instance=book, partial=True)
 
     db.session.commit()
 
-    response = {
-        'id': book.id,
-        'title': book.title,
-        'author': book.author,
-        'publisher': book.publisher,
-        'published_date': book.publisheddate,
-        'due_date': book.duedate,
-        'image': book.image,
-        'description': book.description
-    }
+    book_data = book_schema.dump(book)
+    return jsonify(book_data)
 
-    return jsonify(response), 200
 
-@app.route('/books/<int:book_id>', methods=['PUT'])
-def updating_whole_book(book_id):
-    book = Book.query.get(book_id)
+@app.route('/books/<int:book_id>', methods=['DELETE'])
+def delete_book(book_id):
+    book = Book.query.filter_by(id=book_id).first()
     if not book:
-        return jsonify({'message': 'Book not found'})
+        return jsonify({'message': 'Book not found'}), 404
 
-    data = request.get_json()
-    book.title = data.get('title')
-    book.author = data.get('author')
-    book.publisher = data.get('publisher')
-    book.publisheddate = datetime.strptime(data.get('publisheddate'), '%Y-%m-%d %H:%M:%S.%f')
-    book.duedate = datetime.strptime(data.get('duedate'), '%Y-%m-%d %H:%M:%S.%f')
-    book.image = data.get('image')
-    book.description = data.get('description')
-
+    db.session.delete(book)
     db.session.commit()
 
-    return jsonify({'message': 'Book updated successfully'})
+    return jsonify({'message': 'Book deleted'}), 204
 
-  
-  
-# users functionality
+
+# Users Routes
 
 @app.route('/users', methods=['GET'])
-def get_all_users():
+def get_users():
     users = User.query.all()
+    user_schema = UserSchema(many=True)
+    user_data = user_schema.dump(users)
+    return jsonify(user_data)
 
-    user_list = []
-    for user in users:
-        user_data = {
-            'id': user.id,
-            'username': user.username,
-            'email': user.email,
-            'password': user.password,
-            
-        }
-        user_list.append(user_data)
 
-    return jsonify(user_list)
-  
 @app.route('/users/<int:user_id>', methods=['GET'])
-def get_user_by_id(user_id):
+def get_user(user_id):
     user = User.query.filter_by(id=user_id).first()
-
+     
     if user is None:
         return jsonify({'message': 'User not found'}), 404
 
-    user_data = {
-        'id': user.id,
-        'username': user.username,
-        'email': user.email,
-        'password': user.password,
-
-      
-    }
-
+    user_schema = UserSchema()
+    user_data = user_schema.dump(user)
     return jsonify(user_data)
-  
+
+
 @app.route('/users', methods=['POST'])
 def create_user():
     data = request.get_json()
 
-    username = data.get('username')
-    
-    email = data.get('email')
-    password = data.get('password')
+    user_schema = UserSchema()
+    user = user_schema.load(data)
 
-  
-
-    user = User(username=username,email=email, password=password)
     db.session.add(user)
     db.session.commit()
 
-    return jsonify({'message': 'User created successfully', 'user_id': user.id}), 201
-  
+    user_data = user_schema.dump(user)
+    return jsonify(user_data), 201
+
+
+@app.route('/users/<int:user_id>', methods=['PATCH'])
+def update_user(user_id):
+    data = request.get_json()
+
+    user = User.query.filter_by(id=user_id).first()
+
+    if not user:
+        return jsonify({'message': 'User not found'}), 404
+
+    user_schema = UserSchema()
+    user = user_schema.load(data, instance=user, partial=True)
+
+    db.session.commit()
+
+    user_data = user_schema.dump(user)
+    return jsonify(user_data)
+
+
 @app.route('/users/<int:user_id>', methods=['DELETE'])
 def delete_user(user_id):
-    user = User.query.filter(User.id == user_id).first()
-
+    user = User.query.filter_by(id=user_id).first()
+    
     if not user:
         return jsonify({'message': 'User not found'}), 404
 
     db.session.delete(user)
     db.session.commit()
 
-    return jsonify({'message': 'User deleted successfully'}), 200
+    return jsonify({'message': 'User deleted'}), 204
 
-# borrowing functionality
+
+# Borrowings Routes
 
 @app.route('/borrowings', methods=['GET'])
 def get_borrowings():
     borrowings = Borrowing.query.all()
-    borrowing_list = []
-    for borrowing in borrowings:
-        borrowing_dict = {
-            'id': borrowing.id,
-            'userID': borrowing.userID,
-            'bookID': borrowing.bookID,
-            'borrowing_date': borrowing.borrowing_date.strftime('%Y-%m-%d %H:%M:%S'),
-            'return_date': borrowing.return_date.strftime('%Y-%m-%d %H:%M:%S')
-        }
-        borrowing_list.append(borrowing_dict)
-    return jsonify(borrowing_list)
+    borrowing_schema = BorrowingSchema(many=True)
+    borrowing_data = borrowing_schema.dump(borrowings)
+    return jsonify(borrowing_data)
 
-@app.route('/borrowings/<borrowing_id>', methods=['GET'])
+
+@app.route('/borrowings/<int:borrowing_id>', methods=['GET'])
 def get_borrowing(borrowing_id):
     borrowing = Borrowing.query.filter_by(id=borrowing_id).first()
+    if borrowing is None:
+        return jsonify({'message': 'Borrowing not found'}), 404
 
-    if borrowing is not None:
-        borrowing_data = {
-            'id': borrowing.id,
-            'userID': borrowing.userID,
-            'bookID': borrowing.bookID,
-            'borrowing_date': borrowing.borrowing_date,
-            'return_date': borrowing.return_date
-        }
-        return jsonify(borrowing_data)
-    else:
-        return jsonify({'message': 'Borrowing not found.'}), 404
-
-@app.route('/borrowings/<borrowing_id>', methods=['DELETE'])
-def delete_borrowing(borrowing_id):
-    borrowing = Borrowing.query.filter_by(id=borrowing_id).first()
-
-    if borrowing is not None:
-        db.session.delete(borrowing)
-        db.session.commit()
-        return jsonify({'message': 'Borrowing deleted successfully.'})
-    else:
-        return jsonify({'message': 'Borrowing not found.'}), 404
+    borrowing_schema = BorrowingSchema()
+    borrowing_data = borrowing_schema.dump(borrowing)
+    return jsonify(borrowing_data)
 
 
 @app.route('/borrowings', methods=['POST'])
 def create_borrowing():
     data = request.get_json()
-    user_id = data.get('userID')
-    book_id = data.get('bookID')
 
-    new_borrowing = Borrowing(userID=user_id, bookID=book_id, borrowing_date=datetime.now())
-    db.session.add(new_borrowing)
+    borrowing_schema = BorrowingSchema()
+    borrowing = borrowing_schema.load(data)
+
+    db.session.add(borrowing)
     db.session.commit()
 
-    return jsonify({'message': 'Borrowing created successfully'})
+    borrowing_data = borrowing_schema.dump(borrowing)
+    return jsonify(borrowing_data), 201
 
-# reviews functionality
+
+@app.route('/borrowings/<int:borrowing_id>', methods=['PATCH'])
+def update_borrowing(borrowing_id):
+    data = request.get_json()
+
+    borrowing = Borrowing.query.filter_by(id=borrowing_id).first()
+    if not borrowing:
+        return jsonify({'message': 'Borrowing not found'}), 404
+
+    borrowing_schema = BorrowingSchema()
+    borrowing = borrowing_schema.load(data, instance=borrowing, partial=True)
+
+    db.session.commit()
+
+    borrowing_data = borrowing_schema.dump(borrowing)
+    return jsonify(borrowing_data)
+
+
+@app.route('/borrowings/<int:borrowing_id>', methods=['DELETE'])
+def delete_borrowing(borrowing_id):
+    borrowing = Borrowing.query.filter_by(id=borrowing_id).first()
+    if not borrowing:
+        return jsonify({'message': 'Borrowing not found'}), 404
+
+    db.session.delete(borrowing)
+    db.session.commit()
+
+    return jsonify({'message': 'Borrowing deleted'}), 204
+
+
+# Reviews Routes
+
 @app.route('/reviews', methods=['GET'])
 def get_reviews():
     reviews = Review.query.all()
-    review_list = []
-    for review in reviews:
-        review_dict = {
-            'id': review.id,
-            'bookID': review.bookID,
-            'userID': review.userID,
-            'rating': review.rating,
-            'comment': review.comment
-        }
-        review_list.append(review_dict)
-    return jsonify(review_list)
+    review_schema = ReviewSchema(many=True)
+    review_data = review_schema.dump(reviews)
+    return jsonify(review_data)
+
 
 @app.route('/reviews/<int:review_id>', methods=['GET'])
 def get_review(review_id):
     review = Review.query.filter_by(id=review_id).first()
     if review is None:
-        return jsonify({'error': 'Review not found'}), 404
-    
-    review_dict = {
-        'id': review.id,
-        'bookID': review.bookID,
-        'userID': review.userID,
-        'rating': review.rating,
-        'comment': review.comment
-    }
-    return jsonify(review_dict)
+        return jsonify({'message': 'Review not found'}), 404
 
-@app.route('/reviews/<int:review_id>', methods=['DELETE'])
-def delete_review(review_id):
-    review = Review.query.get(review_id)
-    if review is None:
-        return jsonify({'error': 'Review not found'}), 404
-    
-    db.session.delete(review)
-    db.session.commit()
-    
-    return jsonify({'message': 'Review deleted successfully'})
+    review_schema = ReviewSchema()
+    review_data = review_schema.dump(review)
+    return jsonify(review_data)
+
 
 @app.route('/reviews', methods=['POST'])
 def create_review():
     data = request.get_json()
-    book_id = data.get('bookID')
-    user_id = data.get('userID')
-    rating = data.get('rating')
-    comment = data.get('comment')
-    review = Review(bookID=book_id, userID=user_id, rating=rating, comment=comment)
+
+    review_schema = ReviewSchema()
+    review = review_schema.load(data)
+
     db.session.add(review)
     db.session.commit()
-    return jsonify({
-        'id': review.id,
-        'bookID': review.bookID,
-        'userID': review.userID,
-        'rating': review.rating,
-        'comment': review.comment
-    }), 201
+
+    review_data = review_schema.dump(review)
+    return jsonify(review_data), 201
+
+
+@app.route('/reviews/<int:review_id>', methods=['PATCH'])
+def update_review(review_id):
+    data = request.get_json()
+
+    review = Review.query.filter_by(id=review_id).first()
+    if not review:
+        return jsonify({'message': 'Review not found'}), 404
+
+    review_schema = ReviewSchema()
+    review = review_schema.load(data, instance=review, partial=True)
+
+    db.session.commit()
+
+    review_data = review_schema.dump(review)
+    return jsonify(review_data)
+
+
+@app.route('/reviews/<int:review_id>', methods=['DELETE'])
+def delete_review(review_id):
+    review = Review.query.filter_by(id=review_id).first()
+    if not review:
+        return jsonify({'message': 'Review not found'}), 404
+
+    db.session.delete(review)
+    db.session.commit()
+
+    return jsonify({'message': 'Review deleted'}), 204
 
 # LOGGING AND AUTHENTICATING THE USERS
 
