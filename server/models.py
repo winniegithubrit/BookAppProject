@@ -10,11 +10,10 @@ class User(db.Model, SerializerMixin):
     __tablename__ = 'user'
 
     id = db.Column(db.Integer, primary_key=True)
-    firstname = db.Column(db.String)
-    lastname = db.Column(db.String)
-    contactInfo = db.Column(db.String)
+    username = db.Column(db.String)
     email = db.Column(db.String)
-    phone_number = db.Column(db.Integer)
+    password = db.Column(db.String)
+    
 
     borrowings = db.relationship('Borrowing', backref='user')
     reviews = db.relationship('Review', backref='user')

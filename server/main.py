@@ -1,15 +1,23 @@
-from flask import Flask,jsonify
+from flask import Flask,jsonify,session,request
+# import secrets
+# from flask_restful import Resource,Api,reqparse
 from flask_migrate import Migrate
 from flask import request, jsonify
 from models import db,User,Book,Borrowing,Review
 from datetime import datetime
 
+
 app = Flask(__name__)
+# app.secret_key = secrets.token_hex(16)
+# print(app.secret_key)
+app.secret_key = 'ed976105693e2d6308ddf5dfe86eaa7d'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 migrate  = Migrate(app,db)
 db.init_app(app)
+
+# api = Api(app)
 
 
 @app.route('/')
@@ -183,11 +191,9 @@ def get_all_users():
     for user in users:
         user_data = {
             'id': user.id,
-            'firstname': user.firstname,
-            'lastname': user.lastname,
-            'contactInfo': user.contactInfo,
+            'username': user.username,
             'email': user.email,
-            'phone_number': user.phone_number,
+            'password': user.password,
             
         }
         user_list.append(user_data)
@@ -203,11 +209,10 @@ def get_user_by_id(user_id):
 
     user_data = {
         'id': user.id,
-        'firstname': user.firstname,
-        'lastname': user.lastname,
-        'contactInfo': user.contactInfo,
+        'username': user.username,
         'email': user.email,
-        'phone_number': user.phone_number,
+        'password': user.password,
+
       
     }
 
@@ -217,15 +222,14 @@ def get_user_by_id(user_id):
 def create_user():
     data = request.get_json()
 
-    firstname = data.get('firstname')
-    lastname = data.get('lastname')
-    contactInfo = data.get('contactInfo')
+    username = data.get('username')
+    
     email = data.get('email')
-    phone_number = data.get('phone_number')
+    password = data.get('password')
 
   
 
-    user = User(firstname=firstname, lastname=lastname, contactInfo=contactInfo, email=email, phone_number=phone_number)
+    user = User(username=username,email=email, password=password)
     db.session.add(user)
     db.session.commit()
 
@@ -359,6 +363,59 @@ def create_review():
         'rating': review.rating,
         'comment': review.comment
     }), 201
+
+# LOGGING AND AUTHENTICATING THE USERS
+
+@app.route('/register', methods=['POST'])
+def register():
+    username = request.json.get('username')
+    password = request.json.get('password')
+    email = request.json.get('email')
+    
+    user = User(username=username, password=password, email=email)
+
+    db.session.add(user)
+    db.session.commit()
+
+    return jsonify({'message': 'User registered successfully'})
+
+@app.route('/login', methods=['POST'])
+def login():
+    username = request.json.get('username')
+    password = request.json.get('password')
+
+    
+    user = authenticate_user(username, password)
+
+    if user:
+        session['user_id'] = user.id
+        return jsonify({'message': 'Logged in successfully'})
+    else:
+        return jsonify({'message': 'Invalid username or password'}), 401
+# its using the get method also the check session 
+@app.route('/logout')
+def logout():
+    session.pop('user_id', None)
+    return jsonify({'message': 'Logged out successfully'})
+
+@app.route('/check_session')
+def check_session():
+    user_id = session.get('user_id')
+    if user_id:
+        user = User.query.get(user_id)
+        return jsonify({'message': 'Session is active', 'user': user.username})
+    else:
+        return jsonify({'message': 'Session is not active'}), 401
+
+# Helper function to authenticate the user
+def authenticate_user(username, password):
+    user = User.query.filter_by(username=username).first()
+    if user and user.password == password:
+        return user
+    return None
+
+if __name__ == '__main__':
+    app.run()
 
 
 if __name__ == '__main__':
