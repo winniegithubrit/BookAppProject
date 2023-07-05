@@ -108,18 +108,24 @@ def create_book():
     book_data = book_schema.dump(new_book)
     return jsonify(book_data), 201
 
-
-
 @app.route('/books/<int:book_id>', methods=['PATCH'])
 def update_book(book_id):
     data = request.get_json()
-    
+
     book = Book.query.filter_by(id=book_id).first()
     if not book:
         return jsonify({'message': 'Book not found'}), 404
 
     book_schema = BookSchema()
-    book = book_schema.load(data, instance=book, partial=True)
+    updated_book_data = book_schema.load(data, partial=True)
+
+    book.title = updated_book_data.get('title', book.title)
+    book.author = updated_book_data.get('author', book.author)
+    book.publisher = updated_book_data.get('publisher', book.publisher)
+    book.publisheddate = updated_book_data.get('publisheddate', book.publisheddate)
+    book.duedate = updated_book_data.get('duedate', book.duedate)
+    book.image = updated_book_data.get('image', book.image)
+    book.description = updated_book_data.get('description', book.description)
 
     db.session.commit()
 
@@ -182,17 +188,22 @@ def update_user(user_id):
     data = request.get_json()
 
     user = User.query.filter_by(id=user_id).first()
-
     if not user:
-        return jsonify({'message': 'User not found'}), 404
+        return jsonify({'message': 'user is been not found'}), 404
 
     user_schema = UserSchema()
-    user = user_schema.load(data, instance=user, partial=True)
+    updated_user_data = user_schema.load(data, partial=True)
+
+    user.username = updated_user_data.get('username', user.username)
+    user.email = updated_user_data.get('email', user.email)
+    user.password = updated_user_data.get('password', user.password)
+    
 
     db.session.commit()
 
     user_data = user_schema.dump(user)
     return jsonify(user_data)
+
 
 
 @app.route('/users/<int:user_id>', methods=['DELETE'])
@@ -251,16 +262,21 @@ def update_borrowing(borrowing_id):
 
     borrowing = Borrowing.query.filter_by(id=borrowing_id).first()
     if not borrowing:
-        return jsonify({'message': 'Borrowing not found'}), 404
+        return jsonify({'message': 'borrowing has not  been found'}), 404
 
     borrowing_schema = BorrowingSchema()
-    borrowing = borrowing_schema.load(data, instance=borrowing, partial=True)
+    updated_borrowing_data = borrowing_schema.load(data, partial=True)
+
+    borrowing.userID = updated_borrowing_data.get('userID', borrowing.userID)
+    borrowing.bookID = updated_borrowing_data.get('bookID', borrowing.bookID)
+    borrowing.borrowing_date = updated_borrowing_data.get('borrowing_date', borrowing.borrowing_date)
+    borrowing.return_date = updated_borrowing_data.get('return_date', borrowing.return_date)
+    
 
     db.session.commit()
 
     borrowing_data = borrowing_schema.dump(borrowing)
     return jsonify(borrowing_data)
-
 
 @app.route('/borrowings/<int:borrowing_id>', methods=['DELETE'])
 def delete_borrowing(borrowing_id):
@@ -310,23 +326,27 @@ def create_review():
     review_data = review_schema.dump(new_review)
     return jsonify(review_data), 201
 
-
 @app.route('/reviews/<int:review_id>', methods=['PATCH'])
 def update_review(review_id):
     data = request.get_json()
 
     review = Review.query.filter_by(id=review_id).first()
     if not review:
-        return jsonify({'message': 'Review not found'}), 404
+        return jsonify({'message': 'review has not  been found'}), 404
 
     review_schema = ReviewSchema()
-    review = review_schema.load(data, instance=review, partial=True)
+    updated_review_data = review_schema.load(data, partial=True)
+
+    review.userID = updated_review_data.get('userID', review.userID)
+    review.bookID = updated_review_data.get('bookID', review.bookID)
+    review.rating = updated_review_data.get('rating', review.rating)
+    review.comment = updated_review_data.get('comment', review.comment)
+    
 
     db.session.commit()
 
     review_data = review_schema.dump(review)
     return jsonify(review_data)
-
 
 @app.route('/reviews/<int:review_id>', methods=['DELETE'])
 def delete_review(review_id):
