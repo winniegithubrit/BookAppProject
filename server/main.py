@@ -23,6 +23,7 @@ class BookSchema(ma.SQLAlchemySchema):
         model = Book
 
     id = ma.auto_field()
+    userID = ma.auto_field()
     title = ma.auto_field()
     author = ma.auto_field()
     publisher = ma.auto_field()
