@@ -4,6 +4,8 @@ from flask_migrate import Migrate
 from models import db, User, Book, Borrowing, Review
 from datetime import datetime
 from flask_marshmallow import Marshmallow
+import bcrypt
+
 
 app = Flask(__name__)
 app.secret_key = 'ed976105693e2d6308ddf5dfe86eaa7d'
@@ -359,15 +361,18 @@ def delete_review(review_id):
 
     return jsonify({'message': 'Review deleted'}), 204
 
-# LOGGING AND AUTHENTICATING THE USERS
+# LOGGING IN AND AUTHENTICATION
 
 @app.route('/register', methods=['POST'])
 def register():
     username = request.json.get('username')
     password = request.json.get('password')
     email = request.json.get('email')
-    
-    user = User(username=username, password=password, email=email)
+
+    # Hashing the password
+    hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+
+    user = User(username=username, password=hashed_password, email=email)
 
     db.session.add(user)
     db.session.commit()
@@ -379,7 +384,6 @@ def login():
     username = request.json.get('username')
     password = request.json.get('password')
 
-    
     user = authenticate_user(username, password)
 
     if user:
@@ -387,27 +391,38 @@ def login():
         return jsonify({'message': 'Logged in successfully'})
     else:
         return jsonify({'message': 'Invalid username or password'}), 401
-# its using the get method also the check session 
-@app.route('/logout')
-def logout():
-    session.pop('user_id', None)
-    return jsonify({'message': 'Logged out successfully'})
 
 @app.route('/check_session')
 def check_session():
     user_id = session.get('user_id')
     if user_id:
         user = User.query.get(user_id)
-        return jsonify({'message': 'Session is active', 'user': user.username})
+        if user:
+            return jsonify({'message': 'Session is active', 'user': user.username})
+        else:
+            
+            session.pop('user_id', None)
+            return jsonify({'message': 'Session is not active'}), 401
     else:
         return jsonify({'message': 'Session is not active'}), 401
+    
+@app.route('/logout')
+def logout():
+    user_id = session.get('user_id')
+    if user_id:
+        session.pop('user_id')
+        return jsonify({'message': 'Logged out successfully'})
+    else:
+        return jsonify({'message': 'No active session'}), 401
+
 
 # Helper function to authenticate the user
 def authenticate_user(username, password):
     user = User.query.filter_by(username=username).first()
-    if user and user.password == password:
+    if user and bcrypt.checkpw(password.encode('utf-8'), user.password):
         return user
     return None
+
 
 if __name__ == '__main__':
     app.run(port=5555)

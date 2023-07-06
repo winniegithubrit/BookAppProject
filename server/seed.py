@@ -2,6 +2,7 @@ from faker import Faker
 from datetime import datetime
 from models import db, Book, User, Borrowing, Review
 from main import app
+import bcrypt
 import random
 
 fake = Faker()
@@ -13,17 +14,21 @@ with app.app_context():
     for _ in range(10):
         username = fake.user_name()
         email = fake.email()
-        password = fake.password()
+        password = fake.password() or "defaultpassword"
+
+        # Hash the password
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
         user = User(
             username=username,
             email=email,
-            password=password
+            password=hashed_password
         )
         users.append(user)
 
     db.session.bulk_save_objects(users)
     db.session.commit()
+
 
 
 
