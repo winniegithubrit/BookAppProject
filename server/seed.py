@@ -28,10 +28,6 @@ with app.app_context():
 
     db.session.bulk_save_objects(users)
     db.session.commit()
-
-
-
-
     # books = []
     # for i in range(30):
     #     user_id = random.randint(1, 10)
